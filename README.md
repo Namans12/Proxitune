@@ -1,0 +1,159 @@
+# ProxiTune
+
+ProxiTune is a Windows audio router that switches playback between an Echo,
+Google Home, and laptop speakers based on where you are in the room.
+
+The project currently provides:
+
+- Windows audio endpoint discovery.
+- Programmatic switching of the Windows console and multimedia output.
+- A phone-friendly local controller with Echo, Google Home, and Laptop buttons.
+- BLE advertisement discovery with RSSI reporting.
+- RSSI smoothing, hysteresis, dwell time, and cooldown logic for future automatic mode.
+- A configuration-driven design that can later accept BLE, phone, or other sensors.
+
+The no-beacon phone controller is the reliable mode today. Automatic proximity
+switching needs a sensor that can distinguish the two room zones; dedicated BLE
+beacons are the most reliable option, while phone Bluetooth RSSI is available as
+an experimental fallback.
+
+## Requirements
+
+- Windows 10 or Windows 11.
+- Python 3.11 or newer. Python 3.13 is recommended.
+- A Windows Bluetooth adapter for BLE scanning.
+- Echo and Google Home paired with Windows as audio output devices.
+
+Python 3.10 and older are not supported. If you run a lower version, pip will
+stop with an error like:
+
+```text
+ERROR: Package 'proxitune' requires a different Python: 3.10.5 not in '>=3.11'
+```
+
+Install Python 3.11+ and create the environment with that interpreter, for
+example:
+
+```bat
+py -3.13 -m venv venv
+venv\Scripts\activate
+python --version
+```
+
+## Installation
+
+From the repository directory:
+
+```bat
+py -3.13 -m venv venv
+venv\Scripts\activate
+python -m pip install --upgrade pip
+pip install -e ".[windows,ble,dev]"
+```
+
+The extras install:
+
+- `windows`: pycaw and Windows audio dependencies.
+- `ble`: bleak and Windows BLE/WinRT dependencies.
+- `dev`: pytest.
+
+## Configure your audio devices
+
+List active playback endpoints:
+
+```bat
+python -m proxitune.audio
+```
+
+Copy the example configuration and edit the three endpoint IDs:
+
+```bat
+copy config.example.json config.json
+```
+
+Use the IDs printed by the previous command for `echo`, `google`, and `laptop`.
+`config.json` is intentionally ignored by Git because endpoint IDs are specific
+to one Windows installation.
+
+## Test manual switching
+
+Switch directly by endpoint ID:
+
+```bat
+python -m proxitune.audio --set-default "{WINDOWS-ENDPOINT-ID}"
+```
+
+The controller sets both the Windows Console and Multimedia roles. Some apps
+pin their own output device and may need to be restarted or reconfigured.
+
+## Use the phone controller
+
+Start the local controller on Windows:
+
+```bat
+python -m proxitune.companion --token "choose-a-long-random-token"
+```
+
+Find the PC's Wi-Fi IPv4 address with `ipconfig`. Connect the phone to the same
+network and open:
+
+```text
+http://YOUR-PC-IP:8765/?token=choose-a-long-random-token
+```
+
+Tap a zone to switch output. The token prevents other devices on the local
+network from changing the output. Windows Firewall may ask permission the first
+time the server listens on the network.
+
+The controller initializes Windows COM separately for every request thread. This
+avoids the `CoInitialize has not been called` error that can otherwise appear
+after the first successful switch.
+
+## Inspect BLE signals
+
+Scan nearby BLE advertisements and RSSI values:
+
+```bat
+python -m proxitune.ble --duration 10
+```
+
+The scanner recognizes service UUIDs and iBeacon identifiers. Place a beacon
+near each speaker, scan beside each one, and record the two stable identifiers
+in `config.json`.
+
+## Run tests
+
+```bat
+python -m pytest -q
+```
+
+The tests cover RSSI spike rejection, margin/dwell/cooldown behavior, and
+authenticated phone-controller requests without requiring physical speakers.
+
+## Project layout
+
+```text
+src/proxitune/
+├── audio.py       Windows endpoint discovery and switching
+├── ble.py         BLE advertisement scanning and RSSI conversion
+├── companion.py   Authenticated phone-friendly local controller
+├── decision.py    Hysteresis and cooldown decision engine
+└── proximity.py   Median and exponential RSSI smoothing
+
+tests/             Platform-independent unit tests
+config.example.json
+pyproject.toml
+```
+
+## Roadmap
+
+1. Add an Android companion that reports experimental speaker RSSI.
+2. Add automatic BLE-zone mode using two beacons.
+3. Add tray UI, pause/manual override, logging, and calibration.
+4. Add per-application routing and presence-aware behavior.
+
+## Safety and privacy
+
+ProxiTune does not require cloud services. The phone controller is local to your
+network and should be protected with a long random token. Do not expose port
+8765 directly to the public internet.

@@ -1,0 +1,26 @@
+{
+  "scan_interval_seconds": 2.0,
+  "rssi_window_size": 7,
+  "rssi_smoothing_alpha": 0.35,
+  "minimum_margin_db": 8.0,
+  "candidate_dwell_seconds": 6.0,
+  "switch_cooldown_seconds": 20.0,
+  "reading_stale_after_seconds": 8.0,
+  "zones": {
+    "echo": {
+      "label": "Echo",
+      "beacon_id": "replace-with-echo-beacon-id",
+      "audio_device_id": "replace-with-windows-endpoint-id"
+    },
+    "google": {
+      "label": "Google Home",
+      "beacon_id": "replace-with-google-beacon-id",
+      "audio_device_id": "replace-with-windows-endpoint-id"
+    },
+    "laptop": {
+      "label": "Laptop speakers",
+      "beacon_id": null,
+      "audio_device_id": "replace-with-windows-endpoint-id"
+    }
+  }
+}

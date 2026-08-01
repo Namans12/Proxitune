@@ -1,0 +1,29 @@
+# Local Python environments
+venv/
+.venv/
+env/
+
+# Python build and test output
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Machine-specific configuration and secrets
+config.json
+.env
+*.local.json
+
+# Logs and local tooling
+logs/
+*.log
+.idea/
+.vscode/
+*.code-workspace
+
+# Optional local audio helper binaries
+SoundVolumeView.exe
