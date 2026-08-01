@@ -115,6 +115,22 @@ The controller initializes Windows COM separately for every request thread. This
 avoids the `CoInitialize has not been called` error that can otherwise appear
 after the first successful switch.
 
+Automatic mode can be enabled for sensor testing:
+
+```bat
+python -m proxitune.companion --auto --token "choose-a-long-random-token"
+```
+
+It accepts authenticated `POST /proximity` requests such as:
+
+```json
+{"readings": {"echo": -52, "google": -70}}
+```
+
+The existing smoothing, minimum RSSI margin, candidate dwell, and cooldown
+rules decide whether a switch is justified. Until a phone sensor is connected,
+the manual controller remains the recommended mode.
+
 ## Inspect BLE signals
 
 Scan nearby BLE advertisements and RSSI values:

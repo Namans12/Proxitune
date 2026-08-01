@@ -30,13 +30,14 @@ class CompanionState:
 class CompanionServer:
     """Authenticated local HTTP controller for manual zone changes."""
 
-    def __init__(self, zone_devices: dict[str, str], token: str, switch: Callable[[str], None], media: Callable[[str], bool] | None = None) -> None:
+    def __init__(self, zone_devices: dict[str, str], token: str, switch: Callable[[str], None], media: Callable[[str], bool] | None = None, auto_router=None) -> None:
         if not token:
             raise ValueError("token must not be empty")
         self.zone_devices = zone_devices
         self.token = token
         self.switch = switch
         self.media = media
+        self.auto_router = auto_router
         self.state = CompanionState()
         self._lock = threading.Lock()
 
@@ -81,6 +82,12 @@ class CompanionServer:
                         return
                     self._json(HTTPStatus.OK, {"available": owner.media is not None})
                     return
+                if path == "/auto-status":
+                    if not self._authorized():
+                        self._json(HTTPStatus.UNAUTHORIZED, {"error": "invalid token"})
+                        return
+                    self._json(HTTPStatus.OK, {"enabled": owner.auto_router is not None})
+                    return
                 self._json(HTTPStatus.NOT_FOUND, {"error": "not found"})
 
             def do_POST(self) -> None:  # noqa: N802
@@ -99,6 +106,15 @@ class CompanionServer:
                         if owner.media is None:
                             self._json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "media controls are unavailable"})
                             return
+                    elif path == "/proximity":
+                        if owner.auto_router is None:
+                            self._json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "automatic mode is disabled"})
+                            return
+                        raw_readings = payload["readings"]
+                        if not isinstance(raw_readings, dict) or not raw_readings:
+                            raise ValueError("readings must be a non-empty object")
+                        readings = {str(zone): float(rssi) for zone, rssi in raw_readings.items()}
+                    
                     else:
                         raise KeyError(path)
                 except (ValueError, KeyError, json.JSONDecodeError):
@@ -107,9 +123,17 @@ class CompanionServer:
                 try:
                     if path == "/zone":
                         owner.switch(device_id)
-                    else:
+                        if owner.auto_router is not None:
+                            owner.auto_router.set_current(zone)
+                    elif path == "/media":
                         if not owner.media(action):
                             raise RuntimeError(f"media action was not accepted: {action}")
+                    else:
+                        event = owner.auto_router.submit(readings)
+                        if event.kind == "switch" and event.zone is not None:
+                            owner.state.current_zone = event.zone
+                        self._json(HTTPStatus.OK, {"kind": event.kind, "zone": event.zone, "reason": event.reason})
+                        return
                 except Exception as exc:  # noqa: BLE001 - return useful device error to client
                     with owner._lock:
                         owner.state.last_error = str(exc)
@@ -175,10 +199,15 @@ def main() -> int:
     parser.add_argument("--token", required=True, help="shared token used by the phone page")
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--auto", action="store_true", help="enable automatic switching from /proximity readings")
     args = parser.parse_args()
     zone_devices = _load_zone_devices(args.config)
     from .media import MediaController
-    CompanionServer(zone_devices, args.token, NativeWindowsSwitcher().set_default, MediaController().control).serve(args.host, args.port)
+    auto_router = None
+    if args.auto:
+        from .auto import AutoRouter
+        auto_router = AutoRouter(zone_devices, NativeWindowsSwitcher().set_default)
+    CompanionServer(zone_devices, args.token, NativeWindowsSwitcher().set_default, MediaController().control, auto_router).serve(args.host, args.port)
     return 0
 
 

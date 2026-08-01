@@ -59,3 +59,35 @@ def test_phone_controller_forwards_media_action():
     finally:
         server.shutdown()
         server.server_close()
+
+
+def test_phone_controller_forwards_proximity_readings_to_auto_router():
+    class FakeEvent:
+        kind = "candidate"
+        zone = "echo"
+        reason = "test"
+
+    class FakeRouter:
+        def __init__(self):
+            self.readings = None
+
+        def submit(self, readings):
+            self.readings = readings
+            return FakeEvent()
+
+    router = FakeRouter()
+    controller = CompanionServer({"echo": "echo-id"}, "secret", lambda _: None, auto_router=router)
+    server = ThreadingHTTPServer(("127.0.0.1", 0), controller.make_handler())
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        connection = HTTPConnection("127.0.0.1", server.server_port)
+        connection.request(
+            "POST", "/proximity?token=secret", body=json.dumps({"readings": {"echo": -52, "google": -70}}),
+            headers={"Content-Type": "application/json"},
+        )
+        assert connection.getresponse().status == 200
+        assert router.readings == {"echo": -52.0, "google": -70.0}
+    finally:
+        server.shutdown()
+        server.server_close()
