@@ -11,7 +11,7 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
-windows = ["pycaw>=20240210"]
+windows = ["pycaw>=20240210", "winrt-Windows.Media.Control>=3.2.1"]
 ble = ["bleak>=0.22"]
 
 [tool.setuptools.packages.find]

@@ -8,6 +8,7 @@ The project currently provides:
 - Windows audio endpoint discovery.
 - Programmatic switching of the Windows console and multimedia output.
 - A phone-friendly local controller with Echo, Google Home, and Laptop buttons.
+- Play/pause, previous, and next controls for the current Windows media session.
 - BLE advertisement discovery with RSSI reporting.
 - RSSI smoothing, hysteresis, dwell time, and cooldown logic for future automatic mode.
 - A configuration-driven design that can later accept BLE, phone, or other sensors.
@@ -53,7 +54,7 @@ pip install -e ".[windows,ble,dev]"
 
 The extras install:
 
-- `windows`: pycaw and Windows audio dependencies.
+- `windows`: pycaw, Windows audio, and Global System Media Transport Controls dependencies.
 - `ble`: bleak and Windows BLE/WinRT dependencies.
 - `dev`: pytest.
 
@@ -104,6 +105,11 @@ http://YOUR-PC-IP:8765/?token=choose-a-long-random-token
 Tap a zone to switch output. The token prevents other devices on the local
 network from changing the output. Windows Firewall may ask permission the first
 time the server listens on the network.
+
+The Media row controls the session Windows considers current. It works with
+Spotify, browser media such as YouTube, VLC, and other apps that expose Windows
+System Media Transport Controls. If an app does not expose a media session, the
+page reports that no active media session is available.
 
 The controller initializes Windows COM separately for every request thread. This
 avoids the `CoInitialize has not been called` error that can otherwise appear
