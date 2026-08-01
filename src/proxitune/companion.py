@@ -183,6 +183,8 @@ async function media(action){{
         print(f"ProxiTune phone controller: http://<this-PC-IP>:{port}/?token={self.token}")
         try:
             server.serve_forever()
+        except KeyboardInterrupt:
+            print("\nProxiTune phone controller stopped.")
         finally:
             server.server_close()
 
