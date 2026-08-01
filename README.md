@@ -143,6 +143,14 @@ The scanner recognizes service UUIDs and iBeacon identifiers. Place a beacon
 near each speaker, scan beside each one, and record the two stable identifiers
 in `config.json`.
 
+## Build the Android companion
+
+The experimental phone sensor lives in `android/`. Open that directory in
+Android Studio, sync Gradle, and run the `app` configuration on an Android 8+
+phone. The companion scans Bluetooth Classic discovery and BLE advertisements,
+then posts readings to the Windows controller. See [android/README.md](android/README.md)
+for configuration and the discoverability limitation.
+
 ## Run tests
 
 ```bat
