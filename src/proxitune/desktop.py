@@ -15,7 +15,7 @@ import sys
 import threading
 import tkinter as tk
 from pathlib import Path
-from tkinter import messagebox, ttk
+from tkinter import filedialog, messagebox, ttk
 from urllib.parse import urlencode
 
 from .audio import NativeWindowsSwitcher
@@ -104,6 +104,7 @@ class DesktopApp:
     def __init__(self, config_path: str, port: int, minimized: bool = False) -> None:
         self.config_path = config_path
         self.port = port
+        self.server = None
         self.token = _load_token()
         self.ip = _local_ip()
         self.root = tk.Tk()
@@ -138,6 +139,7 @@ class DesktopApp:
         button_row.pack(fill="x", pady=12)
         ttk.Button(button_row, text="Copy pairing URL", command=self._copy_url).pack(side="left")
         ttk.Button(button_row, text="Regenerate token", command=self._regenerate).pack(side="left", padx=8)
+        ttk.Button(button_row, text="Choose config.json", command=self._choose_config).pack(side="left")
 
         self.startup = tk.BooleanVar(value=_startup_enabled())
         ttk.Checkbutton(
@@ -154,6 +156,10 @@ class DesktopApp:
         ).pack(anchor="w", pady=(8, 0))
 
     def _start_server(self) -> None:
+        if not Path(self.config_path).is_file():
+            self.status.set("Select your ProxiTune config.json to continue")
+            self.root.after(100, self._choose_config)
+            return
         try:
             zones = _load_zone_devices(self.config_path)
             self.server = CompanionServer(
@@ -169,6 +175,17 @@ class DesktopApp:
             self.server = None
             self.status.set("Setup error")
             messagebox.showerror("ProxiTune could not start", str(exc), parent=self.root)
+
+    def _choose_config(self) -> None:
+        selected = filedialog.askopenfilename(
+            parent=self.root,
+            title="Choose ProxiTune config.json",
+            initialdir=str(Path(self.config_path).parent),
+            filetypes=[("ProxiTune config", "config.json"), ("JSON files", "*.json"), ("All files", "*.*")],
+        )
+        if selected:
+            self.config_path = selected
+            self._start_server()
 
     def _refresh_pairing(self) -> None:
         self.ip = _local_ip()
@@ -257,11 +274,15 @@ def main() -> int:
     config = Path(args.config)
     if not config.is_absolute() and not config.exists():
         executable_dir = Path(sys.executable).resolve().parent
-        candidates = [
+        candidates = []
+        bundle_root = getattr(sys, "_MEIPASS", None)
+        if bundle_root:
+            candidates.append(Path(bundle_root) / config)
+        candidates.extend([
             executable_dir / config,
             executable_dir.parent / config,
             Path(__file__).resolve().parents[2] / config,
-        ]
+        ])
         config = next((candidate for candidate in candidates if candidate.exists()), config)
     DesktopApp(str(config), args.port, args.minimized).run()
     return 0

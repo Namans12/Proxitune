@@ -63,8 +63,10 @@ For a standalone executable, install the desktop extra and run:
 ```
 
 The generated executable uses the ProxiTune artwork for its Windows icon and
-tray icon. Running from the virtual environment is the recommended development
-workflow.
+tray icon. When `config.json` exists during a local build, it is bundled into
+the executable; otherwise the app lets you choose the file with **Choose
+config.json** on first launch. Running from the virtual environment is the
+recommended development workflow.
 
 ## Android remote
 
