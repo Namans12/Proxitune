@@ -38,8 +38,10 @@ class MainActivity : Activity() {
     private lateinit var echoTarget: EditText
     private lateinit var googleTarget: EditText
     private lateinit var status: TextView
+    private lateinit var discovered: TextView
     private lateinit var startButton: Button
     private val samples = ConcurrentHashMap<String, Sample>()
+    private val seenDevices = ConcurrentHashMap<String, String>()
     private val mainHandler = Handler(Looper.getMainLooper())
     private var scheduler: ScheduledExecutorService? = null
     private var running = false
@@ -86,6 +88,7 @@ class MainActivity : Activity() {
         echoTarget = field("Echo name or Bluetooth address", "Echo")
         googleTarget = field("Google Home name or Bluetooth address", "Google Home")
         status = TextView(this).apply { text = "Configure the PC URL and speaker names." }
+        discovered = TextView(this).apply { text = "Seen devices will appear here while scanning." }
         startButton = Button(this).apply {
             text = "Start proximity scanning"
             setOnClickListener { if (running) stopScanning() else startScanning() }
@@ -102,6 +105,7 @@ class MainActivity : Activity() {
             addView(googleTarget)
             addView(startButton)
             addView(status)
+            addView(discovered)
         }
     }
 
@@ -186,6 +190,7 @@ class MainActivity : Activity() {
     private fun remember(device: BluetoothDevice, rssi: Int) {
         val name = try { device.name ?: "" } catch (_: SecurityException) { "" }
         val address = device.address
+        seenDevices[address] = "${name.ifBlank { "(unnamed)" }} · $address · $rssi dBm"
         val echo = echoTarget.text.toString()
         val google = googleTarget.text.toString()
         when {
@@ -235,7 +240,13 @@ class MainActivity : Activity() {
     }
 
     private fun updateStatus(message: String) {
-        mainHandler.post { if (::status.isInitialized) status.text = message }
+        mainHandler.post {
+            if (::status.isInitialized) status.text = message
+            if (::discovered.isInitialized) {
+                val lines = seenDevices.values.sorted().takeLast(12)
+                discovered.text = if (lines.isEmpty()) "No Bluetooth devices seen yet." else "Seen devices:\n" + lines.joinToString("\n")
+            }
+        }
     }
 
     override fun onDestroy() {
