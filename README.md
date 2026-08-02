@@ -1,6 +1,6 @@
 # ProxiTune
 
-![ProxiTune logo](assets/proxitune-logo.png)
+<img src="assets/proxitune-logo.png" alt="ProxiTune logo" width="240">
 
 ProxiTune is a local-only remote for Windows audio. Your Echo and Google Home
 stay connected to the laptop as Bluetooth audio devices. A Windows companion
