@@ -40,6 +40,8 @@ class CompanionServer:
         self.auto_router = auto_router
         self.state = CompanionState()
         self._lock = threading.Lock()
+        self._server: ThreadingHTTPServer | None = None
+        self._thread: threading.Thread | None = None
 
     def make_handler(self):
         owner = self
@@ -81,12 +83,6 @@ class CompanionServer:
                         self._json(HTTPStatus.UNAUTHORIZED, {"error": "invalid token"})
                         return
                     self._json(HTTPStatus.OK, {"available": owner.media is not None})
-                    return
-                if path == "/auto-status":
-                    if not self._authorized():
-                        self._json(HTTPStatus.UNAUTHORIZED, {"error": "invalid token"})
-                        return
-                    self._json(HTTPStatus.OK, {"enabled": owner.auto_router is not None})
                     return
                 self._json(HTTPStatus.NOT_FOUND, {"error": "not found"})
 
@@ -178,15 +174,33 @@ async function media(action){{
 
         return Handler
 
+    def start(self, host: str = "0.0.0.0", port: int = 8765) -> None:
+        """Start the HTTP controller in a daemon thread (for desktop UI use)."""
+        if self._server is not None:
+            return
+        self._server = ThreadingHTTPServer((host, port), self.make_handler())
+        self._thread = threading.Thread(target=self._server.serve_forever, name="proxitune-http", daemon=True)
+        self._thread.start()
+
+    def stop(self) -> None:
+        """Stop a server started with :meth:`start`."""
+        if self._server is None:
+            return
+        self._server.shutdown()
+        self._server.server_close()
+        self._server = None
+        self._thread = None
+
     def serve(self, host: str = "0.0.0.0", port: int = 8765) -> None:
-        server = ThreadingHTTPServer((host, port), self.make_handler())
+        self.start(host, port)
         print(f"ProxiTune phone controller: http://<this-PC-IP>:{port}/?token={self.token}")
         try:
-            server.serve_forever()
+            assert self._thread is not None
+            self._thread.join()
         except KeyboardInterrupt:
             print("\nProxiTune phone controller stopped.")
         finally:
-            server.server_close()
+            self.stop()
 
 
 def _load_zone_devices(path: str) -> dict[str, str]:
@@ -195,39 +209,16 @@ def _load_zone_devices(path: str) -> dict[str, str]:
     return {zone: details["audio_device_id"] for zone, details in config["zones"].items()}
 
 
-def _load_auto_config(path: str):
-    from .auto import AutoConfig
-    from .decision import EngineConfig
-
-    with open(path, encoding="utf-8") as handle:
-        config = json.load(handle)
-    return AutoConfig(
-        tracker_window_size=int(config.get("rssi_window_size", 7)),
-        tracker_alpha=float(config.get("rssi_smoothing_alpha", 0.35)),
-        decision=EngineConfig(
-            minimum_margin_db=float(config.get("minimum_margin_db", 8.0)),
-            candidate_dwell_seconds=float(config.get("candidate_dwell_seconds", 6.0)),
-            switch_cooldown_seconds=float(config.get("switch_cooldown_seconds", 20.0)),
-            reading_stale_after_seconds=float(config.get("reading_stale_after_seconds", 8.0)),
-        ),
-    )
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run the ProxiTune phone controller")
     parser.add_argument("--config", default="config.json")
     parser.add_argument("--token", required=True, help="shared token used by the phone page")
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8765)
-    parser.add_argument("--auto", action="store_true", help="enable automatic switching from /proximity readings")
     args = parser.parse_args()
     zone_devices = _load_zone_devices(args.config)
     from .media import MediaController
-    auto_router = None
-    if args.auto:
-        from .auto import AutoRouter
-        auto_router = AutoRouter(zone_devices, NativeWindowsSwitcher().set_default, _load_auto_config(args.config))
-    CompanionServer(zone_devices, args.token, NativeWindowsSwitcher().set_default, MediaController().control, auto_router).serve(args.host, args.port)
+    CompanionServer(zone_devices, args.token, NativeWindowsSwitcher().set_default, MediaController().control).serve(args.host, args.port)
     return 0
 
 

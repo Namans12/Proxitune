@@ -1,194 +1,127 @@
 # ProxiTune
 
-ProxiTune is a Windows audio router that switches playback between an Echo,
-Google Home, and laptop speakers based on where you are in the room.
+ProxiTune is a local-only remote for Windows audio. Your Echo and Google Home
+stay connected to the laptop as Bluetooth audio devices. A Windows companion
+app exposes safe controls on home Wi-Fi, and the Android app pairs once with a
+QR code.
 
-The project currently provides:
-
-- Windows audio endpoint discovery.
-- Programmatic switching of the Windows console and multimedia output.
-- A phone-friendly local controller with Echo, Google Home, and Laptop buttons.
-- Play/pause, previous, and next controls for the current Windows media session.
-- BLE advertisement discovery with RSSI reporting.
-- RSSI smoothing, hysteresis, dwell time, and cooldown logic for future automatic mode.
-- A configuration-driven design that can later accept BLE, phone, or other sensors.
-
-The no-beacon phone controller is the reliable mode today. Automatic proximity
-switching needs a sensor that can distinguish the two room zones; dedicated BLE
-beacons are the most reliable option, while phone Bluetooth RSSI is available as
-an experimental fallback.
+The supported product is deliberately manual: choose the output speaker from
+your phone, then control the current Windows media session (Spotify, YouTube,
+VLC, and other apps that expose Windows media controls). Automatic room
+proximity switching is archived under [`experimental/`](experimental/).
 
 ## Requirements
 
-- Windows 10 or Windows 11.
-- Python 3.11 or newer. Python 3.13 is recommended.
-- A Windows Bluetooth adapter for BLE scanning.
-- Echo and Google Home paired with Windows as audio output devices.
+- Windows 10/11 with Echo and Google Home paired as audio outputs.
+- Python 3.11 or newer (Python 3.13 is recommended).
+- Android 8+ phone on the same Wi-Fi network as the laptop.
 
-Python 3.10 and older are not supported. If you run a lower version, pip will
-stop with an error like:
+Python 3.10 is intentionally rejected. If you see `Package 'proxitune'
+requires a different Python: 3.10.5 not in '>=3.11'`, install a newer Python
+and create the virtual environment with that interpreter.
 
-```text
-ERROR: Package 'proxitune' requires a different Python: 3.10.5 not in '>=3.11'
-```
-
-Install Python 3.11+ and create the environment with that interpreter, for
-example:
-
-```bat
-py -3.13 -m venv venv
-venv\Scripts\activate
-python --version
-```
-
-## Installation
-
-From the repository directory:
+## Windows setup
 
 ```bat
 py -3.13 -m venv venv
 venv\Scripts\activate
 python -m pip install --upgrade pip
-pip install -e ".[windows,ble,dev]"
+pip install -e ".[windows,desktop,dev]"
 ```
 
-The extras install:
-
-- `windows`: pycaw, Windows audio, and Global System Media Transport Controls dependencies.
-- `ble`: bleak and Windows BLE/WinRT dependencies.
-- `dev`: pytest.
-
-## Configure your audio devices
-
-List active playback endpoints:
-
-```bat
-python -m proxitune.audio
-```
-
-Copy the example configuration and edit the three endpoint IDs:
+Create your machine-specific configuration and fill in the endpoint IDs:
 
 ```bat
 copy config.example.json config.json
+python -m proxitune.audio
 ```
 
-Use the IDs printed by the previous command for `echo`, `google`, and `laptop`.
-`config.json` is intentionally ignored by Git because endpoint IDs are specific
-to one Windows installation.
+Use the IDs printed by the last command for `echo`, `google`, and `laptop` in
+`config.json`. The file is ignored by Git because endpoint IDs are unique to a
+Windows installation.
 
-## Test manual switching
+## Start the Windows companion
 
-Switch directly by endpoint ID:
+```bat
+python -m proxitune.desktop
+```
+
+The app finds the laptop's Wi-Fi address, starts the local controller on port
+8765, and displays a QR code. Scan it from the Android app. The checkbox in
+the Windows window optionally registers ProxiTune to start minimized with
+Windows; leave it unchecked if you prefer to launch it yourself.
+
+If Windows Firewall asks whether Python may accept connections, allow it on
+your private/home network. Never expose port 8765 to the public internet.
+
+For a standalone executable, install the desktop extra and run:
+
+```bat
+pyinstaller --noconfirm --onefile --windowed --name ProxiTune tools\desktop_entry.py
+```
+
+Running from the virtual environment is the recommended development workflow.
+
+## Android remote
+
+Build and install the Android app (Android Studio can open the `android/`
+folder, or use the wrapper):
+
+```bat
+cd android
+gradlew.bat assembleDebug
+```
+
+Install `app\build\outputs\apk\debug\app-debug.apk` on your phone. Tap
+**Scan Windows QR Code**, scan the code shown by the Windows companion, and
+the pairing is saved on the phone. The app then offers Echo, Google Home, and
+laptop output buttons plus previous, play/pause, and next controls.
+
+Both speakers are connected to the **laptop**, not the phone. The phone is
+only a Wi-Fi remote; Windows performs the endpoint switch and media command.
+
+## Command-line fallback
+
+The graphical companion is the normal path. The local web controller remains
+available for troubleshooting:
+
+```bat
+python -m proxitune.companion --config config.json --token "long-random-token"
+```
+
+Open the printed URL on a phone connected to the same Wi-Fi. Direct endpoint
+switching is also available:
 
 ```bat
 python -m proxitune.audio --set-default "{WINDOWS-ENDPOINT-ID}"
 ```
 
-The controller sets both the Windows Console and Multimedia roles. Some apps
-pin their own output device and may need to be restarted or reconfigured.
+The controller initializes Windows COM separately for every request thread,
+avoiding the `CoInitialize has not been called` error.
 
-## Use the phone controller
-
-Start the local controller on Windows:
-
-```bat
-python -m proxitune.companion --token "choose-a-long-random-token"
-```
-
-Find the PC's Wi-Fi IPv4 address with `ipconfig`. Connect the phone to the same
-network and open:
-
-```text
-http://YOUR-PC-IP:8765/?token=choose-a-long-random-token
-```
-
-Tap a zone to switch output. The token prevents other devices on the local
-network from changing the output. Windows Firewall may ask permission the first
-time the server listens on the network.
-
-The Media row controls the session Windows considers current. It works with
-Spotify, browser media such as YouTube, VLC, and other apps that expose Windows
-System Media Transport Controls. If an app does not expose a media session, the
-page reports that no active media session is available.
-
-The controller initializes Windows COM separately for every request thread. This
-avoids the `CoInitialize has not been called` error that can otherwise appear
-after the first successful switch.
-
-Automatic mode can be enabled for sensor testing:
-
-```bat
-python -m proxitune.companion --auto --token "choose-a-long-random-token"
-```
-
-It accepts authenticated `POST /proximity` requests such as:
-
-```json
-{"readings": {"echo": -52, "google": -70}}
-```
-
-The existing smoothing, minimum RSSI margin, candidate dwell, and cooldown
-rules decide whether a switch is justified. Until a phone sensor is connected,
-the manual controller remains the recommended mode.
-
-Automatic-mode thresholds are read from `config.json`. For example, lowering
-`minimum_margin_db` from `8` to `4` makes switching more responsive when the
-speakers are far apart, while the dwell and cooldown values still prevent rapid
-bouncing.
-
-## Inspect BLE signals
-
-Scan nearby BLE advertisements and RSSI values:
-
-```bat
-python -m proxitune.ble --duration 10
-```
-
-The scanner recognizes service UUIDs and iBeacon identifiers. Place a beacon
-near each speaker, scan beside each one, and record the two stable identifiers
-in `config.json`.
-
-## Build the Android companion
-
-The experimental phone sensor lives in `android/`. Open that directory in
-Android Studio, sync Gradle, and run the `app` configuration on an Android 8+
-phone. The companion scans Bluetooth Classic discovery and BLE advertisements,
-then posts readings to the Windows controller. See [android/README.md](android/README.md)
-for configuration and the discoverability limitation.
-
-## Run tests
+## Tests
 
 ```bat
 python -m pytest -q
 ```
 
-The tests cover RSSI spike rejection, margin/dwell/cooldown behavior, and
-authenticated phone-controller requests without requiring physical speakers.
+The tests exercise authenticated zone switching and media forwarding without
+requiring physical speakers. The old proximity tests live with the archived
+prototype and can be run separately with `PYTHONPATH=experimental/python`.
 
 ## Project layout
 
 ```text
 src/proxitune/
 ├── audio.py       Windows endpoint discovery and switching
-├── ble.py         BLE advertisement scanning and RSSI conversion
-├── companion.py   Authenticated phone-friendly local controller
-├── decision.py    Hysteresis and cooldown decision engine
-└── proximity.py   Median and exponential RSSI smoothing
-
-tests/             Platform-independent unit tests
+├── companion.py   Authenticated local HTTP API
+├── desktop.py     Windows QR/tray companion UI
+└── media.py       Windows media-session controls
+android/           Main Android QR-paired remote
+experimental/      Archived proximity/BLE prototype and documentation
 config.example.json
-pyproject.toml
 ```
 
-## Roadmap
-
-1. Add an Android companion that reports experimental speaker RSSI.
-2. Add automatic BLE-zone mode using two beacons.
-3. Add tray UI, pause/manual override, logging, and calibration.
-4. Add per-application routing and presence-aware behavior.
-
-## Safety and privacy
-
-ProxiTune does not require cloud services. The phone controller is local to your
-network and should be protected with a long random token. Do not expose port
-8765 directly to the public internet.
+ProxiTune has no cloud service. The token is generated locally and stored in
+`%LOCALAPPDATA%\ProxiTune\state.json`; regenerate it from the Windows app if
+you need to invalidate a previously paired phone.

@@ -1,12 +1,3 @@
-"""ProxiTune core package."""
+"""Working ProxiTune Windows remote-control package."""
 
-from .decision import DecisionEngine, DecisionEvent, EngineConfig
-from .proximity import ProximityReading, RssiTracker
-
-__all__ = [
-    "DecisionEngine",
-    "DecisionEvent",
-    "EngineConfig",
-    "ProximityReading",
-    "RssiTracker",
-]
+__all__: list[str] = []

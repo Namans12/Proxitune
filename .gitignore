@@ -27,3 +27,17 @@ logs/
 
 # Optional local audio helper binaries
 SoundVolumeView.exe
+
+# Windows desktop packaging and Android/Gradle generated state
+desktop_state.json
+*.spec
+android/.gradle/
+android/.idea/
+android/build/
+android/local.properties
+android/app/build/
+experimental/android-proximity/.gradle/
+experimental/android-proximity/.idea/
+experimental/android-proximity/build/
+experimental/android-proximity/local.properties
+experimental/android-proximity/app/build/

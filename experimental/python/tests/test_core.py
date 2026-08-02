@@ -1,5 +1,5 @@
-from proxitune.decision import DecisionEngine, EngineConfig
-from proxitune.proximity import ProximityReading, RssiTracker
+from proxitune_experimental.decision import DecisionEngine, EngineConfig
+from proxitune_experimental.proximity import ProximityReading, RssiTracker
 
 
 def test_tracker_rejects_one_sample_spike():

@@ -1,5 +1,5 @@
-from proxitune.auto import AutoConfig, AutoRouter
-from proxitune.decision import EngineConfig
+from proxitune_experimental.auto import AutoConfig, AutoRouter
+from proxitune_experimental.decision import EngineConfig
 
 
 def test_auto_router_switches_after_configured_margin_and_dwell():
