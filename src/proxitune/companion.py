@@ -195,6 +195,24 @@ def _load_zone_devices(path: str) -> dict[str, str]:
     return {zone: details["audio_device_id"] for zone, details in config["zones"].items()}
 
 
+def _load_auto_config(path: str):
+    from .auto import AutoConfig
+    from .decision import EngineConfig
+
+    with open(path, encoding="utf-8") as handle:
+        config = json.load(handle)
+    return AutoConfig(
+        tracker_window_size=int(config.get("rssi_window_size", 7)),
+        tracker_alpha=float(config.get("rssi_smoothing_alpha", 0.35)),
+        decision=EngineConfig(
+            minimum_margin_db=float(config.get("minimum_margin_db", 8.0)),
+            candidate_dwell_seconds=float(config.get("candidate_dwell_seconds", 6.0)),
+            switch_cooldown_seconds=float(config.get("switch_cooldown_seconds", 20.0)),
+            reading_stale_after_seconds=float(config.get("reading_stale_after_seconds", 8.0)),
+        ),
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run the ProxiTune phone controller")
     parser.add_argument("--config", default="config.json")
@@ -208,7 +226,7 @@ def main() -> int:
     auto_router = None
     if args.auto:
         from .auto import AutoRouter
-        auto_router = AutoRouter(zone_devices, NativeWindowsSwitcher().set_default)
+        auto_router = AutoRouter(zone_devices, NativeWindowsSwitcher().set_default, _load_auto_config(args.config))
     CompanionServer(zone_devices, args.token, NativeWindowsSwitcher().set_default, MediaController().control, auto_router).serve(args.host, args.port)
     return 0
 

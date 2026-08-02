@@ -131,6 +131,11 @@ The existing smoothing, minimum RSSI margin, candidate dwell, and cooldown
 rules decide whether a switch is justified. Until a phone sensor is connected,
 the manual controller remains the recommended mode.
 
+Automatic-mode thresholds are read from `config.json`. For example, lowering
+`minimum_margin_db` from `8` to `4` makes switching more responsive when the
+speakers are far apart, while the dwell and cooldown values still prevent rapid
+bouncing.
+
 ## Inspect BLE signals
 
 Scan nearby BLE advertisements and RSSI values:

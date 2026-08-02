@@ -2,7 +2,7 @@
   "scan_interval_seconds": 2.0,
   "rssi_window_size": 7,
   "rssi_smoothing_alpha": 0.35,
-  "minimum_margin_db": 8.0,
+  "minimum_margin_db": 4.0,
   "candidate_dwell_seconds": 6.0,
   "switch_cooldown_seconds": 20.0,
   "reading_stale_after_seconds": 8.0,
