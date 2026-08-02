@@ -109,6 +109,12 @@ class DesktopApp:
         self.ip = _local_ip()
         self.root = tk.Tk()
         self.root.title("ProxiTune")
+        icon_path = _asset_path("proxitune.ico")
+        if icon_path is not None:
+            try:
+                self.root.iconbitmap(default=str(icon_path))
+            except tk.TclError:
+                pass
         self.root.geometry("560x650")
         self.root.minsize(480, 560)
         self.root.protocol("WM_DELETE_WINDOW", self._quit)

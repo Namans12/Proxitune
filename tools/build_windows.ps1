@@ -4,6 +4,7 @@ $pyinstallerArgs = @(
   "--name", "ProxiTune",
   "--icon", "assets\proxitune.ico",
   "--add-data", "assets\proxitune-logo.png;assets",
+  "--add-data", "assets\proxitune.ico;assets",
   "tools\desktop_entry.py"
 )
 if (Test-Path config.json) {
