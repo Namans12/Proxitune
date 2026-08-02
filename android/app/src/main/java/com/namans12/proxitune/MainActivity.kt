@@ -225,8 +225,18 @@ class MainActivity : Activity() {
             connection.setRequestProperty("Content-Type", "application/json")
             connection.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
             val code = connection.responseCode
+            val responseBody = try {
+                val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+                stream?.bufferedReader()?.use { it.readText() } ?: ""
+            } catch (_: Exception) {
+                ""
+            }
             connection.disconnect()
-            if (code !in 200..299) updateStatus("Windows controller returned HTTP $code")
+            if (code in 200..299) {
+                updateStatus("Controller: $responseBody")
+            } else {
+                updateStatus("Windows controller returned HTTP $code $responseBody")
+            }
         } catch (error: Exception) {
             updateStatus("Controller unavailable: ${error.javaClass.simpleName}")
         }
