@@ -22,6 +22,7 @@ android {
 kotlin { jvmToolchain(21) }
 
 dependencies {
+    implementation("androidx.activity:activity-ktx:1.9.2")
     implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.24")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
 }

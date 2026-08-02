@@ -115,8 +115,8 @@ class DesktopApp:
                 self.root.iconbitmap(default=str(icon_path))
             except tk.TclError:
                 pass
-        self.root.geometry("560x650")
-        self.root.minsize(480, 560)
+        self.root.geometry("680x820")
+        self.root.minsize(560, 700)
         self.root.protocol("WM_DELETE_WINDOW", self._quit)
         self._qr_image = None
         self._tray = None
@@ -137,7 +137,7 @@ class DesktopApp:
         ttk.Label(frame, textvariable=self.status, foreground="#176b3a").pack(anchor="w", pady=(0, 10))
         ttk.Label(frame, text="On your Android phone, scan this QR code once:").pack(anchor="w")
         self.qr_label = ttk.Label(frame, text="Preparing QR code…", anchor="center")
-        self.qr_label.pack(fill="both", expand=True, pady=12)
+        self.qr_label.pack(fill="none", expand=False, pady=12)
 
         self.url_var = tk.StringVar()
         ttk.Label(frame, textvariable=self.url_var, wraplength=500, justify="left").pack(anchor="w")
@@ -203,7 +203,7 @@ class DesktopApp:
             from PIL import ImageTk
 
             image = qrcode.make(payload).convert("RGB")
-            image.thumbnail((360, 360))
+            image.thumbnail((280, 280))
             self._qr_image = ImageTk.PhotoImage(image)
             self.qr_label.configure(image=self._qr_image, text="")
         except ImportError:

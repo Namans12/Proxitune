@@ -1,23 +1,25 @@
 package com.namans12.proxitune
 
-import android.app.Activity
+import android.Manifest
+import android.os.Bundle
 import android.graphics.Color
 import android.net.Uri
-import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
-import com.google.zxing.integration.android.IntentIntegrator
-import com.google.zxing.integration.android.IntentResult
+import androidx.activity.ComponentActivity
+import androidx.activity.result.contract.ActivityResultContracts
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Executors
 
-class MainActivity : Activity() {
+class MainActivity : ComponentActivity() {
     private val executor = Executors.newSingleThreadExecutor()
     private val preferences by lazy { getSharedPreferences("pairing", MODE_PRIVATE) }
     private lateinit var status: TextView
@@ -25,6 +27,24 @@ class MainActivity : Activity() {
     private lateinit var remotePanel: LinearLayout
     private var baseUrl: String? = null
     private var token: String? = null
+
+    private val barcodeLauncher = registerForActivityResult(ScanContract()) { result ->
+        try {
+            val contents = result.contents
+            if (!contents.isNullOrBlank()) {
+                pairFrom(contents)
+            } else {
+                connection.text = "QR scan cancelled. Tap Scan Windows QR Code to try again."
+            }
+        } catch (error: Exception) {
+            connection.text = "QR scanner error: ${error.message ?: "unknown error"}"
+        }
+    }
+
+    private val cameraPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) launchScanner()
+        else connection.text = "Camera permission is required to scan the Windows QR code."
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -128,20 +148,21 @@ class MainActivity : Activity() {
     }
 
     private fun scanQr() {
-        IntentIntegrator(this).apply {
-            setPrompt("Scan the QR code shown by ProxiTune on Windows")
-            setOrientationLocked(false)
-            initiateScan()
-        }
+        cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
-        val result: IntentResult? = IntentIntegrator.parseActivityResult(requestCode, resultCode, data)
-        if (result != null) {
-            if (!result.contents.isNullOrBlank()) pairFrom(result.contents)
-            return
+    private fun launchScanner() {
+        try {
+            val options = ScanOptions().apply {
+                setPrompt("Scan the QR code shown by ProxiTune on Windows")
+                setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                setOrientationLocked(false)
+                setBeepEnabled(true)
+            }
+            barcodeLauncher.launch(options)
+        } catch (error: Exception) {
+            connection.text = "Could not open camera scanner: ${error.message ?: "unknown error"}"
         }
-        super.onActivityResult(requestCode, resultCode, data)
     }
 
     private fun pairFrom(contents: String) {
