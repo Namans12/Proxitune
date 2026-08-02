@@ -44,6 +44,20 @@ def _state_path() -> Path:
     return root / "state.json"
 
 
+def _asset_path(name: str) -> Path | None:
+    """Locate a bundled logo in source and PyInstaller layouts."""
+    roots = []
+    bundle_root = getattr(sys, "_MEIPASS", None)
+    if bundle_root:
+        roots.append(Path(bundle_root))
+    roots.extend((Path(sys.executable).resolve().parent, Path(__file__).resolve().parents[2]))
+    for root in roots:
+        candidate = root / "assets" / name
+        if candidate.exists():
+            return candidate
+    return None
+
+
 def _load_token() -> str:
     path = _state_path()
     try:
@@ -199,8 +213,13 @@ class DesktopApp:
             import pystray
             from PIL import Image, ImageDraw
 
-            icon_image = Image.new("RGB", (64, 64), "#176b3a")
-            ImageDraw.Draw(icon_image).ellipse((12, 12, 52, 52), fill="white")
+            logo_path = _asset_path("proxitune-logo.png")
+            if logo_path is not None:
+                icon_image = Image.open(logo_path).convert("RGBA")
+                icon_image.thumbnail((64, 64), Image.Resampling.LANCZOS)
+            else:
+                icon_image = Image.new("RGB", (64, 64), "#176b3a")
+                ImageDraw.Draw(icon_image).ellipse((12, 12, 52, 52), fill="white")
             menu = pystray.Menu(
                 pystray.MenuItem("Show ProxiTune", lambda icon, item: self.root.after(0, self._show_window)),
                 pystray.MenuItem("Quit", lambda icon, item: self.root.after(0, self._quit)),

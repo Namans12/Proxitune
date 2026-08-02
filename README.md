@@ -1,5 +1,7 @@
 # ProxiTune
 
+![ProxiTune logo](assets/proxitune-logo.png)
+
 ProxiTune is a local-only remote for Windows audio. Your Echo and Google Home
 stay connected to the laptop as Bluetooth audio devices. A Windows companion
 app exposes safe controls on home Wi-Fi, and the Android app pairs once with a
@@ -57,10 +59,12 @@ your private/home network. Never expose port 8765 to the public internet.
 For a standalone executable, install the desktop extra and run:
 
 ```bat
-pyinstaller --noconfirm --onefile --windowed --name ProxiTune tools\desktop_entry.py
+.\tools\build_windows.ps1
 ```
 
-Running from the virtual environment is the recommended development workflow.
+The generated executable uses the ProxiTune artwork for its Windows icon and
+tray icon. Running from the virtual environment is the recommended development
+workflow.
 
 ## Android remote
 
