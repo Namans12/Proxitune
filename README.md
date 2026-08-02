@@ -59,6 +59,7 @@ your private/home network. Never expose port 8765 to the public internet.
 For a standalone executable, install the desktop extra and run:
 
 ```bat
+venv\Scripts\python.exe -m pip install -e ".[windows,desktop]"
 .\tools\build_windows.ps1
 ```
 
