@@ -23,6 +23,12 @@ The phone sends readings only when both targets have been seen within the last
 eight seconds. The Windows engine still applies its RSSI smoothing, margin,
 dwell, and cooldown rules.
 
+The **Seen devices** section is a diagnostic list. `(unnamed)` entries are
+usually BLE advertisements that do not include a friendly name. They are not
+automatically the Echo or Google Home. Android discovery can report an RSSI
+value without a device name; use the address only if you can positively identify
+that device.
+
 ## Important limitation
 
 Android Classic Bluetooth RSSI is available during device discovery only. The

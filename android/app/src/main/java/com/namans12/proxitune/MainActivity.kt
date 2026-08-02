@@ -56,13 +56,14 @@ class MainActivity : Activity() {
             if (intent.action != BluetoothDevice.ACTION_FOUND) return
             val device = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE) ?: return
             val rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, Short.MIN_VALUE).toInt()
-            remember(device, rssi)
+            val discoveredName = intent.getStringExtra(BluetoothDevice.EXTRA_NAME)
+            remember(device, rssi, discoveredName)
         }
     }
 
     private val bleCallback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
-            remember(result.device, result.rssi)
+            remember(result.device, result.rssi, result.scanRecord?.deviceName)
         }
 
         override fun onScanFailed(errorCode: Int) {
@@ -187,8 +188,8 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun remember(device: BluetoothDevice, rssi: Int) {
-        val name = try { device.name ?: "" } catch (_: SecurityException) { "" }
+    private fun remember(device: BluetoothDevice, rssi: Int, discoveredName: String? = null) {
+        val name = discoveredName?.takeIf { it.isNotBlank() } ?: try { device.name ?: "" } catch (_: SecurityException) { "" }
         val address = device.address
         seenDevices[address] = "${name.ifBlank { "(unnamed)" }} · $address · $rssi dBm"
         val echo = echoTarget.text.toString()
